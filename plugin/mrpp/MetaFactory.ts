@@ -405,7 +405,10 @@ class MetaFactory extends Factory {
 			const videoSource = imageUrl || fileUrl;
 
 			if (videoSource) {
-				finalUrl = `${videoSource}?ci-process=snapshot&time=0&format=jpg`;
+				const isLocalStorageUrl = /(^|\/)(api\/)?storage\//.test(videoSource);
+				finalUrl = isLocalStorageUrl
+					? videoSource
+					: `${videoSource}?ci-process=snapshot&time=0&format=jpg`;
 			}
 		}
 
