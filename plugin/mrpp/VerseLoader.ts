@@ -6,6 +6,11 @@ import type { MrppEditor } from '../types/mrpp.js';
 const hasVerseModules = (verse: any): boolean =>
 	Array.isArray(verse?.children?.modules) && verse.children.modules.length > 0;
 
+const getString = (editor: MrppEditor, key: string, fallback: string): string => {
+	const value = editor.strings.getKey(key);
+	return value && value !== key ? value : fallback;
+};
+
 class VerseLoader {
 
 	editor: MrppEditor;
@@ -127,19 +132,22 @@ class VerseLoader {
 
 		const verse = await this.getVerse();
 		if (!hasVerseModules(verse)) {
-			const message = this.editor.strings.getKey('menubar/file/publish_empty') || '场景为空，请先添加实体后再发布。';
+			const message = getString(this.editor, 'menubar/file/publish_empty', '场景为空，请先添加实体后再发布。');
 			this.editor.showNotification(message, true);
 			return;
 		}
 
 		const data = { verse };
 		const json = JSON.stringify(data);
+		const publish = (saveBeforePublish: boolean = false): void => {
+			this.editor.signals.messageSend.dispatch({
+				action: "release-verse",
+				data: saveBeforePublish ? { ...data, saveBeforePublish } : data,
+			});
+			this.json = json;
+		};
 
-		this.editor.signals.messageSend.dispatch({
-			action: "release-verse",
-			data,
-		});
-		this.json = json;
+		publish(this.isChanged(json));
 	}
 
 	compareObjectsAndPrintDifferences(obj1: any, obj2: any, path: string = '', tolerance: number = 0.0001): void {
