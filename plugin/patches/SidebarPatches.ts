@@ -640,11 +640,98 @@ function injectOutlinerSearchUI( editor: MrppEditor ): void {
 
 	}
 
+	function isInternalOutlinerObject( object: any ): boolean {
+
+		return (
+			object === editor.camera ||
+			object === editor.scene ||
+			( object.userData && object.userData.hidden === true ) ||
+			( object.name && object.name.charAt( 0 ) === '$' )
+		);
+
+	}
+
+	function expandClosedOutlinerBranches(): boolean {
+
+		const closedOpeners = outlinerDom!.querySelectorAll( '.opener.closed' );
+
+		if ( closedOpeners.length === 0 ) return false;
+
+		(closedOpeners[ 0 ] as HTMLElement).click();
+		return true;
+
+	}
+
+	function objectMatchesFilter( object: any, searchText: string, selectedType: string ): boolean {
+
+		if ( isInternalOutlinerObject( object ) ) return false;
+
+		if ( searchText.length > 0 ) {
+
+			const objectName = ( object.name || '' ).toLowerCase();
+
+			if ( objectName.indexOf( searchText ) === - 1 ) return false;
+
+		}
+
+		if ( selectedType !== '' ) {
+
+			const [ filterKind, filterValue ] = String( selectedType ).split( ':' );
+
+			if ( filterKind === 'type' ) {
+
+				return getFilterObjectType( object ) === filterValue;
+
+			}
+
+			if ( filterKind === 'component' ) {
+
+				return hasFilterComponent( object, filterValue );
+
+			}
+
+		}
+
+		return true;
+
+	}
+
+	function hasMatchingDescendant( object: any, searchText: string, selectedType: string, cache: Map<number, boolean> ): boolean {
+
+		if ( cache.has( object.id ) ) return cache.get( object.id ) === true;
+
+		let matched = objectMatchesFilter( object, searchText, selectedType );
+
+		if ( ! matched ) {
+
+			for ( let i = 0; i < object.children.length; i ++ ) {
+
+				if ( hasMatchingDescendant( object.children[ i ], searchText, selectedType, cache ) ) {
+
+					matched = true;
+					break;
+
+				}
+
+			}
+
+		}
+
+		cache.set( object.id, matched );
+		return matched;
+
+	}
+
 	// ── Shared filter logic ──
 	function applySearchFilter(): void {
 
 		const searchText = searchInput.getValue().toLowerCase();
 		const selectedType = filterSelect.getValue(); // '' means all
+		const hasActiveFilter = searchText.length > 0 || selectedType !== '';
+
+		if ( hasActiveFilter && expandClosedOutlinerBranches() ) return;
+
+		const matchCache = new Map<number, boolean>();
 		const options = outlinerDom!.querySelectorAll( '.option' );
 
 		for ( let i = 0; i < options.length; i ++ ) {
@@ -666,48 +753,16 @@ function injectOutlinerSearchUI( editor: MrppEditor ): void {
 
 			}
 
-			if (
-				object === editor.camera ||
-				object === editor.scene ||
-				( object.name && object.name.charAt( 0 ) === '$' )
-			) {
+			if ( isInternalOutlinerObject( object ) ) {
 
 				// Internal object — leave hidden by injectOutlinerFilter
 				continue;
 
 			}
 
-			let visible = true;
-
-			// Name search filter
-			if ( searchText.length > 0 ) {
-
-				const objectName = ( object.name || '' ).toLowerCase();
-
-				if ( objectName.indexOf( searchText ) === - 1 ) {
-
-					visible = false;
-
-				}
-
-			}
-
-			// Type / component filter
-			if ( visible && selectedType !== '' ) {
-
-				const [ filterKind, filterValue ] = String( selectedType ).split( ':' );
-
-				if ( filterKind === 'type' ) {
-
-					visible = getFilterObjectType( object ) === filterValue;
-
-				} else if ( filterKind === 'component' ) {
-
-					visible = hasFilterComponent( object, filterValue );
-
-				}
-
-			}
+			const visible = hasActiveFilter
+				? hasMatchingDescendant( object, searchText, selectedType, matchCache )
+				: true;
 
 			option.style.display = visible ? '' : 'none';
 

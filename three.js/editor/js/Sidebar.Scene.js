@@ -27,7 +27,7 @@ function SidebarScene( editor ) {
 
 		if ( isSceneEditor ) return false;
 
-		return object.children.some( function ( child ) {
+		function isDisplayableObject( child ) {
 
 			if ( ! child ) return false;
 			if ( child.userData && child.userData.hidden === true ) return false;
@@ -38,6 +38,26 @@ function SidebarScene( editor ) {
 			if ( ! childType || nativeTypes.has( childType ) ) return false;
 
 			return true;
+
+		}
+
+		function hasDisplayableDescendant( child ) {
+
+			if ( isDisplayableObject( child ) ) return true;
+
+			for ( let i = 0; i < child.children.length; i ++ ) {
+
+				if ( hasDisplayableDescendant( child.children[ i ] ) ) return true;
+
+			}
+
+			return false;
+
+		}
+
+		return object.children.some( function ( child ) {
+
+			return hasDisplayableDescendant( child );
 
 		} );
 
