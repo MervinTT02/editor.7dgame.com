@@ -70,7 +70,8 @@ class RotateComponent {
 
       const speed = this.component.parameters.speed || { x: 0, y: 0, z: 0 };
       this.object.rotation.x += THREE.MathUtils.degToRad(Number(speed.x) || 0) * deltaSeconds;
-      this.object.rotation.y += THREE.MathUtils.degToRad(Number(speed.y) || 0) * deltaSeconds;
+      // Unity 客户端与 Three.js 的 Y 轴正向旋转视觉方向相反。
+      this.object.rotation.y -= THREE.MathUtils.degToRad(Number(speed.y) || 0) * deltaSeconds;
       this.object.rotation.z += THREE.MathUtils.degToRad(Number(speed.z) || 0) * deltaSeconds;
 
       this.editor.signals.objectChanged.dispatch(this.object);

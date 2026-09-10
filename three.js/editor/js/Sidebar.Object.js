@@ -9,6 +9,7 @@ import { SetRotationCommand } from './commands/SetRotationCommand.js';
 import { SetScaleCommand } from './commands/SetScaleCommand.js';
 import { SetColorCommand } from './commands/SetColorCommand.js';
 import { SetShadowValueCommand } from './commands/SetShadowValueCommand.js';
+import { getAnimationPreviewTimeline } from './AnimationPreviewPolicy.js';
 
 function getLocalizedObjectType( object, editor ) {
 
@@ -1196,11 +1197,12 @@ function SidebarObject( editor ) {
 
 		const duration = action.getClip().duration || 0;
 		const currentTime = Math.max( 0, Math.min( Number.isFinite( action.time ) ? action.time : 0, duration || 0 ) );
+		const timeline = getAnimationPreviewTimeline( duration, currentTime );
 
-		objectAnimationPreviewProgress.max = String( duration || 0 );
-		objectAnimationPreviewProgress.value = String( duration > 0 ? currentTime : 0 );
-		objectAnimationPreviewProgress.disabled = duration <= 0;
-		objectAnimationPreviewTime.textContent = formatAnimationTime( currentTime ) + ' / ' + formatAnimationTime( duration );
+		objectAnimationPreviewProgress.max = String( timeline.max );
+		objectAnimationPreviewProgress.value = String( timeline.value );
+		objectAnimationPreviewProgress.disabled = timeline.disabled;
+		objectAnimationPreviewTime.textContent = formatAnimationTime( timeline.value ) + ' / ' + formatAnimationTime( duration );
 		setAnimationButtonActiveState( action );
 
 	}
@@ -1279,7 +1281,10 @@ function SidebarObject( editor ) {
 		}
 
 		const action = getAnimationPreviewAction( object );
-		if ( ! action || action.getClip().duration <= 0 ) return;
+		if ( ! action ) return;
+		const duration = action.getClip().duration;
+		const timeline = getAnimationPreviewTimeline( duration, action.time );
+		if ( ! timeline.playable ) return;
 
 		if ( action.paused ) {
 

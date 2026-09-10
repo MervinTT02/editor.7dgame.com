@@ -7,6 +7,16 @@ import { applyUIThreePatches } from '../patches/UIThreePatches.js';
 import { applyDeferredUIPatches } from '../utils/DeferredUIPatches.js';
 import { MessageBridge } from '../utils/MessageBridge.js';
 import { setupBridgeHandlers } from '../utils/BridgeHandlers.js';
+import { createWebMcpHierarchyRequestHandlers } from '../utils/WebMcpHierarchyHandlers.js';
+import { createWebMcpNodeDeletionRequestHandlers } from '../utils/WebMcpNodeDeletionHandlers.js';
+import { createWebMcpNodeCloneRequestHandlers } from '../utils/WebMcpNodeCloneHandlers.js';
+import { createWebMcpNodeBatchRequestHandlers } from '../utils/WebMcpNodeBatchHandlers.js';
+import { createWebMcpComponentRequestHandlers } from '../utils/WebMcpComponentHandlers.js';
+import { createWebMcpNodeOrderRequestHandlers } from '../utils/WebMcpNodeOrderHandlers.js';
+import { createWebMcpNodePropertyRequestHandlers } from '../utils/WebMcpNodePropertyHandlers.js';
+import { createWebMcpResourcePlacementRequestHandlers } from '../utils/WebMcpResourcePlacementHandlers.js';
+import { createWebMcpSignalRequestHandlers } from '../utils/WebMcpSignalHandlers.js';
+import { createWebMcpTransformRequestHandlers } from '../utils/WebMcpTransformHandlers.js';
 import type { MrppEditor } from '../types/mrpp.js';
 
 
@@ -93,6 +103,18 @@ function initMetaEditor( editor: MrppEditor ): void {
 
 			editor.metaLoader.json = json;
 
+		},
+		requestHandlers: {
+			...createWebMcpTransformRequestHandlers( editor ),
+			...createWebMcpNodePropertyRequestHandlers( editor ),
+			...createWebMcpResourcePlacementRequestHandlers( editor ),
+			...createWebMcpHierarchyRequestHandlers( editor ),
+			...createWebMcpNodeDeletionRequestHandlers( editor ),
+			...createWebMcpNodeOrderRequestHandlers( editor ),
+			...createWebMcpNodeCloneRequestHandlers( editor ),
+			...createWebMcpNodeBatchRequestHandlers( editor ),
+			...createWebMcpComponentRequestHandlers( editor ),
+			...createWebMcpSignalRequestHandlers( editor )
 		}
 	} );
 
@@ -139,6 +161,8 @@ function initMetaEditor( editor: MrppEditor ): void {
 				console.log( 'Set user role:', editor.data.user.role );
 
 			}
+
+			editor.data.saveable = data.saveable !== false;
 
 		}
 

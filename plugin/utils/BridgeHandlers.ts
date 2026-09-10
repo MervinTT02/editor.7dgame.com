@@ -12,6 +12,12 @@ export interface BridgeHandlersConfig {
 	getLoaderData: () => Promise<Record<string, unknown>>;
 	/** 保存成功后更新 loader 的 json 快照 */
 	loaderJsonSetter: ( json: string ) => void;
+	/** Additional request handlers keyed by an exact action name. */
+	requestHandlers?: Record<
+		string,
+		( payload: Record<string, unknown> ) =>
+			Record<string, unknown> | Promise<Record<string, unknown>>
+	>;
 }
 
 /**
@@ -82,7 +88,7 @@ export function setupBridgeHandlers( config: BridgeHandlersConfig ): void {
 
 	// ── 3. REQUEST handler ───────────────────────────────────────────
 
-	bridge.onMessage( 'REQUEST', ( payload: any ) => {
+	bridge.onMessage( 'REQUEST', ( payload: any, message ) => {
 
 		const action = payload.action;
 
@@ -104,7 +110,7 @@ export function setupBridgeHandlers( config: BridgeHandlersConfig ): void {
 				bridge.postResponse( {
 					action: 'check-unsaved-changes',
 					changed: Boolean( changed )
-				} );
+				}, message.id );
 
 			} )();
 			return;
@@ -124,7 +130,7 @@ export function setupBridgeHandlers( config: BridgeHandlersConfig ): void {
 						bridge.postResponse( {
 							action: 'save-before-leave',
 							noChange: true
-						} );
+						}, message.id );
 						return;
 
 					}
@@ -133,7 +139,7 @@ export function setupBridgeHandlers( config: BridgeHandlersConfig ): void {
 					bridge.postResponse( {
 						action: 'save-before-leave',
 						...responsePayload
-					} );
+					}, message.id );
 					loaderJsonSetter( JSON.stringify( responsePayload ) );
 
 				} catch ( error ) {
@@ -142,7 +148,33 @@ export function setupBridgeHandlers( config: BridgeHandlersConfig ): void {
 					bridge.postResponse( {
 						action: 'save-before-leave',
 						noChange: true
-					} );
+					}, message.id );
+
+				}
+
+			} )();
+			return;
+
+		}
+
+		const customHandler = config.requestHandlers?.[ action ];
+		if ( customHandler ) {
+
+			( async () => {
+
+				try {
+
+					const response = await customHandler( payload );
+					bridge.postResponse( { action, ...response }, message.id );
+
+				} catch ( error ) {
+
+					bridge.postResponse( {
+						action,
+						ok: false,
+						code: 'HANDLER_ERROR',
+						error: error instanceof Error ? error.message : String( error )
+					}, message.id );
 
 				}
 
@@ -154,7 +186,8 @@ export function setupBridgeHandlers( config: BridgeHandlersConfig ): void {
 		// Other REQUEST actions → dispatch to editor internal signal system
 		editor.signals.messageReceive.dispatch( {
 			action: action,
-			data: payload
+			data: payload,
+			requestId: message.id
 		} );
 
 	} );
